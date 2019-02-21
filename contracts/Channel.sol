@@ -36,15 +36,15 @@ contract Channel {
     /**
      * @dev `constructor`
      */
-    function Channel(address _receiver, address _sender, address _tokenAddress, uint _challengePeriod) 
+    constructor(address _receiver, address _sender, address _tokenAddress, uint _challengePeriod)
     public
-    {       
+    {
         token = Token(_tokenAddress);
         require(token.totalSupply() > 0);
         receiver = _receiver;
-        sender = _sender; 
-        factory = msg.sender; 
-        require(addressHasCode(factory));      
+        sender = _sender;
+        factory = msg.sender;
+        require(addressHasCode(factory));
         challengePeriod = _challengePeriod;
         startDate = now;
         status = State.Initiated;
@@ -53,11 +53,11 @@ contract Channel {
     /**
      * @dev `recharge` to recharge channel once or multiple times
      * @param _deposit no. of tokens
-     * @return bool 
+     * @return bool
      */
-    function recharge(uint _deposit) 
-    external 
-    onlyFactory  
+    function recharge(uint _deposit)
+    external
+    onlyFactory
     returns (bool)
     {
         require(token.transferFrom(sender, address(this), _deposit));
@@ -67,12 +67,12 @@ contract Channel {
     }
 
     /**
-     * @dev `withdraw` to withdraw tokens from channel only once 
+     * @dev `withdraw` to withdraw tokens from channel only once
      * @param _balance no. of tokens to withdraw
      * @param _vbal v of signedBalanceHash
      * @param _rbal r of signedBalanceHash
      * @param _sbal s of signedBalanceHash
-     * @return bool 
+     * @return bool
      */
     function withdraw(uint _balance, uint8 _vbal, bytes32 _rbal, bytes32 _sbal)
     external
@@ -80,7 +80,7 @@ contract Channel {
     returns (bool)
     {
         require(status == State.Recharged);
-        require(_balance <= depositedBalance);                
+        require(_balance <= depositedBalance);
         require(extractBalanceProofSignature(receiver, _balance, _vbal, _rbal, _sbal));
         // Update total withdrawn balance
         withdrawnBalance = _balance;
@@ -88,7 +88,7 @@ contract Channel {
         require(token.transfer(receiver, _balance));
         return true;
     }
-    
+
     /**
      * @dev `mutualSettlement` to settle channel with mutual consent
      * @param _balance no. of tokens to withdraw
@@ -98,7 +98,7 @@ contract Channel {
      * @param _vclose v of signedClosingHash
      * @param _rclose r of signedClosingHash
      * @param _sclose s of signedClosingHash
-     * @return bool 
+     * @return bool
      */
     function mutualSettlement(uint _balance, uint8 _vbal, bytes32 _rbal, bytes32 _sbal, uint8 _vclose, bytes32 _rclose, bytes32 _sclose)
     external
@@ -116,7 +116,7 @@ contract Channel {
     /**
      * @dev `challengedSettlement` to start challenge period of channel
      * @param _balance total balance allocated to receiver
-     * @return bool 
+     * @return bool
      */
     function challengedSettlement(uint _balance)
     external
@@ -131,26 +131,26 @@ contract Channel {
         balanceInChallenge = _balance;
         return true;
     }
-    
+
     /**
-     * @dev `afterChallengeSettle` to settle channel after challenge period 
-     * @return _balance 
+     * @dev `afterChallengeSettle` to settle channel after challenge period
+     * @return _balance
      */
-    function afterChallengeSettle() 
-    external 
+    function afterChallengeSettle()
+    external
     onlyFactory
     returns (uint)
     {
-        require(status == State.InChallenge); 
-        require(now > challengeStartTime + challengePeriod * 1 seconds);  
+        require(status == State.InChallenge);
+        require(now > challengeStartTime + challengePeriod * 1 seconds);
 
         require(settleChannel(sender, receiver, balanceInChallenge));
         return balanceInChallenge;
-    }    
+    }
 
     /**
-     * @dev `getChannelInfo` to get channel information any time 
-     * @return complete details 
+     * @dev `getChannelInfo` to get channel information any time
+     * @return complete details
      */
     function getChannelInfo() onlyFactory external view returns (address, address, address, uint, uint, State, uint, uint){
         return( sender,
@@ -165,8 +165,8 @@ contract Channel {
     }
 
     /**
-     * @dev `getChallengeInfo` to get active challenge information  
-     * @return challenge parameters 
+     * @dev `getChallengeInfo` to get active challenge information
+     * @return challenge parameters
      */
     function getChallengeInfo() onlyFactory external view returns (uint, uint, uint) {
         return( challengeStartTime,
@@ -174,52 +174,52 @@ contract Channel {
                 balanceInChallenge
         );
     }
-    
+
     /**
-     * @dev `extractBalanceProofSignature` to extract signer of signed Hash 
-     * @param _receiverAddress address of receiver 
-     * @param _balance no. of tokens for which hash is signed 
+     * @dev `extractBalanceProofSignature` to extract signer of signed Hash
+     * @param _receiverAddress address of receiver
+     * @param _balance no. of tokens for which hash is signed
      * @param _v v of signedBalanceHash
      * @param _r r of signedBalanceHash
-     * @param _s s of signedBalanceHash   
-     * @return bool 
+     * @param _s s of signedBalanceHash
+     * @return bool
      */
     function extractBalanceProofSignature(address _receiverAddress, uint256 _balance, uint8 _v, bytes32 _r, bytes32 _s)
     internal view
     returns (bool)
     {
-        bytes32 msgHash = keccak256(_receiverAddress, _balance, address(this));
+        bytes32 msgHash = keccak256(abi.encodePacked(_receiverAddress, _balance, address(this)));
         require(ecrecover(msgHash, _v, _r, _s) == sender);
         return true;
     }
 
     /**
-     * @dev `extractClosingSignature` to extract signer of closing Hash 
-     * @param _senderAddress address of sender 
+     * @dev `extractClosingSignature` to extract signer of closing Hash
+     * @param _senderAddress address of sender
      * @param _balance no. of tokens for which hash is signed
      * @param _v v of signedClosingHash
      * @param _r r of signedClosingHash
-     * @param _s s of signedClosingHash    
-     * @return bool 
+     * @param _s s of signedClosingHash
+     * @return bool
      */
     function extractClosingSignature(address _senderAddress, uint _balance, uint8 _v, bytes32 _r, bytes32 _s)
     internal view
     returns (bool)
     {
-        bytes32 msgHash = keccak256(_senderAddress, _balance, address(this));
+        bytes32 msgHash = keccak256(abi.encodePacked(_senderAddress, _balance, address(this)));
         require(ecrecover(msgHash, _v, _r, _s) == receiver);
         return true;
-    } 
+    }
 
     /**
-     * @dev `settleChannel` to settle channel 
-     * @param _senderAddress address of sender 
-     * @param _receiverAddress address of receiver 
-     * @param _balance no. of tokens for which hash is signed    
-     * @return bool 
+     * @dev `settleChannel` to settle channel
+     * @param _senderAddress address of sender
+     * @param _receiverAddress address of receiver
+     * @param _balance no. of tokens for which hash is signed
+     * @return bool
      */
     function settleChannel(address _senderAddress, address _receiverAddress, uint _balance)
-    internal 
+    internal
     returns (bool)
     {
         // Send the unwithdrawn _balance to the receiver
