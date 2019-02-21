@@ -64,7 +64,7 @@ contract Factory {
     * @dev `constructor`
     */
 
-    function Factory() public {
+    constructor() public {
         owner = msg.sender;
     }
 
